@@ -1,58 +1,69 @@
 import csv
 import os
 import sys
+import re
 
-def load_itaiji_mapping(filepath):
-    with open(filepath, 'r', encoding='utf-8') as f:
-        reader = csv.reader(f)
-        return {row[1]: row[0] for row in reader}
+def load_mapping(file_path):
+    """CSVファイルから変換マッピングをロードする"""
+    with open(file_path, 'r', encoding='utf-8') as file:
+        reader = csv.reader(file)
+        return {row[0]: row[1] for row in reader}
 
-def load_filler(filepath):
-    with open(filepath, 'r', encoding='utf-8') as f:
-        reader = csv.reader(f)
-        return [row[0] for row in reader]
+def compare_names_with_fillers(name1, name2, fillers):
+    mismatch_count = 0
+    for a, b in zip(name1, name2):
+        if a in fillers or b in fillers:
+            continue
+        if a != b:
+            mismatch_count += 1
+    return mismatch_count
 
-def normalize_name(name, itaiji):
-    name = name.upper().replace(" ", "").replace("　", "")
-    for irregular, standard in itaiji.items():
-        name = name.replace(irregular, standard)
+def clean_and_convert(name, itaiji_mapping, gaiji_mapping):
+    """氏名のクリーニングと変換を行う"""
+    # []内の文字を削除
+    name = re.sub(r'\[.*?\]', '', name)
+    # 全角半角の空白を削除
+    name = re.sub(r'\s', '', name)
+    # アルファベットを半角大文字に
+    name = name.upper()
+    # 異体字と外字の変換
+    for k, v in itaiji_mapping.items():
+        name = name.replace(k, v)
+    for k, v in gaiji_mapping.items():
+        name = name.replace(k, v)
     return name
 
-def diff_evaluation(src_name, ref_name, fillers):
-    if src_name == "該当なし" or ref_name == "該当なし":
-        return -1
-    if src_name == ref_name:
-        return 0
-    wildcards_matched = sum([1 for filler in fillers if filler in src_name and filler in ref_name])
-    if wildcards_matched > 0:
-        return wildcards_matched
-    return 9
+def main(src_file, ref_file, itaiji_file='data/itaiji.csv', gaiji_file='data/gaiji.csv', filler_file='data/filler.csv'):
+    itaiji_mapping = load_mapping(itaiji_file)
+    gaiji_mapping = load_mapping(gaiji_file)
+    fillers = set(load_mapping(filler_file).keys())
 
-def main(src_file, ref_file):
-    itaiji = load_itaiji_mapping('data/itaiji.csv')
-    fillers = load_filler('data/filler.csv')
-    
     with open(src_file, 'r', encoding='utf-8') as src, open(ref_file, 'r', encoding='utf-8') as ref:
         src_reader = csv.reader(src)
         ref_reader = csv.reader(ref)
 
-        src_data = {row[0]: normalize_name(row[1], itaiji) for row in src_reader}
-        ref_data = {row[0]: normalize_name(row[1], itaiji) for row in ref_reader}
+        src_data = {row[0]: clean_and_convert(row[1], itaiji_mapping, gaiji_mapping) for row in src_reader}
+        ref_data = {row[0]: clean_and_convert(row[1], itaiji_mapping, gaiji_mapping) for row in ref_reader}
 
         all_keys = set(src_data.keys()).union(set(ref_data.keys()))
+        results = []
 
-        output_data = []
-        
         for key in sorted(all_keys):
             src_name = src_data.get(key, "該当なし")
             ref_name = ref_data.get(key, "該当なし")
             
-            evaluation = diff_evaluation(src_name, ref_name, fillers)
-            output_data.append([key, evaluation, src_name, ref_name])
+            if src_name == ref_name:
+                difference = 0
+            elif src_name == "該当なし" or ref_name == "該当なし":
+                difference = -1
+            else:
+                difference = compare_names_with_fillers(src_name, ref_name, fillers)
+
+            results.append([key, difference, src_name, ref_name])
 
     with open(os.path.join(os.path.dirname(src_file), 'name_cmp.csv'), 'w', encoding='utf-8', newline='') as out:
         writer = csv.writer(out)
-        writer.writerows(output_data)
+        writer.writerows(results)
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
