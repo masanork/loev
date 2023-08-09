@@ -25,19 +25,19 @@ loevは2つの同じ項目を持ったリストの比較を行うツールです
 比較したいCSVファイルとして src.csv と ref.csv を準備する。
 
 ``` bash
-python csv-split.py src.csv
+$ python csv-split.py src.csv
 # output: src_1.csv, src_2.csv src_3.csv ...
-python csv-split.py ref.csv
+$ python csv-split.py ref.csv
 # output: ref_1.csv, ref_2.csv ref_3.csv ...
-python name-cmp.py src_1.csv ref_1.csv
+$ python name-cmp.py src_1.csv ref_1.csv
 # output: name_cmp.csv
-python geo-cat.py src_2.csv ref_2.csv
+$ python geo-cat.py src_2.csv ref_2.csv
 # output: geo_cat.csv, address.csv
-abr-geocoder normalize --format=json --fuzzy address.csv > address.json
-python geo-cmp.py geo_cat.csv address.json
+$ abr-geocoder normalize --format=json --fuzzy address.csv > address.json
+$ python geo-cmp.py geo_cat.csv address.json
 # output: geo_cmp.csv
-python date-cmp.py src_3.csv ref_3.csv
+$ python date-cmp.py src_3.csv ref_3.csv
 # output: date_cmp.csv
-python cmp-cat.py name_cmp.csv address_cmp.csv date_cmp.csv
+$ python cmp-cat.py name_cmp.csv address_cmp.csv date_cmp.csv
 # output: all.csv, diff.csv
 ```
