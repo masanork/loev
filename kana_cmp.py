@@ -1,11 +1,17 @@
-import csv
 import os
 import sys
-import re
-import unicodedata
+import csv
 import mojimoji
 
-def normalize_kana(kana):
+def load_conversion_table(file_path):
+    conversion_table = {}
+    with open(file_path, 'r', encoding='utf-8') as f:
+        reader = csv.reader(f)
+        for row in reader:
+            conversion_table[row[0]] = row[1]
+    return conversion_table
+
+def normalize_kana(kana, conversion_table):
     # ひらがな、半角カタカナを全角カタカナに変換
     kana = mojimoji.han_to_zen(kana, ascii=False, digit=False)
     kana = mojimoji.hira_to_kata(kana)
@@ -13,12 +19,9 @@ def normalize_kana(kana):
     # 濁点、半濁点を取り除く
     kana = kana.replace("゛", "").replace("゜", "")
 
-    # 特定の文字の変換
-    kana = kana.replace("ヰ", "イ").replace("ヱ", "エ").replace("ヲ", "オ")
-    
-    # 拗音や長音記号の大きなカタカナに変換
-    for small, large in [("ァ", "ア"), ("ィ", "イ"), ("ゥ", "ウ"), ("ェ", "エ"), ("ォ", "オ"), ("ッ", "ツ"), ("ャ", "ヤ"), ("ュ", "ユ"), ("ョ", "ヨ"), ("ー", "－")]:
-        kana = kana.replace(small, large)
+    # 拗音、長音など特定の文字の変換
+    for key, value in conversion_table.items():
+        kana = kana.replace(key, value)
 
     # スペースを取り除く
     kana = kana.replace(" ", "").replace("　", "")
